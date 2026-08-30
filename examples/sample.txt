@@ -1,3 +1,43 @@
-Replace this with a real input, so `cli.py` exercises the module end to
-end. For a cover-letter writer this would be a job posting; for a
-summariser, an article; for a fit assessment, a role plus a CV.
+Staff Data Engineer — Northwind Logistics
+Location: Manchester (hybrid, 2 days/week in office)
+
+About the role
+
+Northwind moves freight for 400+ retail customers across the UK and EU.
+Our data platform is the backbone of pricing, capacity planning and the
+customer-facing tracking portal — and it hasn't kept pace with the
+business. We're hiring a Staff Data Engineer to lead the rebuild: set the
+technical direction, bring the rest of the data team (5 engineers) with
+you, and own delivery end to end.
+
+What you'll do
+
+- Define and drive the migration from our nightly batch pipeline to a
+  streaming-first architecture, with clear milestones the exec team can
+  track.
+- Own data quality and reliability for the pricing engine, where a bad
+  number costs us real money and customer trust.
+- Set standards for the team — testing, code review, on-call — and coach
+  engineers toward them rather than gatekeeping.
+- Partner with Product and Commercial to turn vague asks into a roadmap.
+
+What we're looking for
+
+- 8+ years in data engineering, with at least 2 leading a platform
+  rebuild or major migration that actually shipped.
+- Deep experience with a stream processing framework (Kafka, Flink,
+  Spark Structured Streaming) in production, not just a POC.
+- Fluency in SQL and Python, and strong opinions about data modelling.
+- A track record of raising the bar on a team without becoming a
+  bottleneck.
+- Comfort operating with ambiguity and limited direction — you'll often
+  be the most senior data person in the room.
+
+Nice to have
+
+- Logistics, supply chain or marketplace background.
+- Experience with dbt and a modern warehouse (Snowflake, BigQuery).
+- Exposure to cost control on cloud data infrastructure.
+
+We move quickly and expect the people we hire to do the same. This is a
+role for someone who wants ownership, not a ticket queue.

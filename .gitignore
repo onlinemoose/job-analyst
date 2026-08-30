@@ -1,6 +1,7 @@
 __pycache__/
 *.pyc
 .venv/
+# local secrets; .env.example is the tracked reference
 .env
 .pytest_cache/
 .import_linter_cache/

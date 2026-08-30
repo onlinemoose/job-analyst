@@ -1,136 +1,149 @@
-# capability-module-template
+# Job Analyst
 
-A starting point for building **one discrete capability** as a standalone
-Python project — something with clear inputs and a clear output that is
-useful on its own, and can be plugged into larger workflows later without
-the capability itself changing.
+A standalone capability module. Given a job posting, it analyses the
+posting **from the hiring manager's / advertising company's
+perspective** — what that employer is really weighing when they read
+applications — and returns a prioritised, posting-anchored list plus a
+short read of the intent behind the advert. It works on its own and can
+be composed into larger workflows later without changing.
 
-Examples: "write a cover letter", "assess fit for a role", "summarise a
-job posting". Each one is its own repository created from this template.
+> Part of a larger system. The rules every capability module follows are
+> in `CLAUDE.md`. The input/output spec is `docs/CONTRACT.md`. The dated
+> change log is `docs/PROGRESS.md`.
 
-The rules every capability must follow are in **`CLAUDE.md`**, which
-Claude Code reads automatically inside any repository created from this
-template — so the constraints travel with the code and you don't have to
-restate them.
+## What it does
 
----
+You hand it a job posting as plain text. It reads the advert the way the
+hiring manager who wrote it would, and returns:
 
-## One-time setup on this machine
+- `requirements`: an ordered list (most important first), each with a
+  `point` — a pronoun-free instruction to whatever will write a cover
+  letter or CV — a verbatim `quote` from the posting it is anchored to,
+  an `importance` (`critical` / `high` / `medium` / `low`), and a
+  one-line `rationale`.
+- `summary`: one or two sentences on what this employer is really
+  buying.
+- `reading_between_the_lines`: 3–6 short strings — the real seniority
+  bar the wording implies, the failure the role is likely a reaction to,
+  pace and culture cues. Inferences, not restatements.
+- `cost`: token counts and an estimated dollar figure for the one LLM
+  call.
 
-You need two things installed:
+It takes **no candidate data** — it characterises the role, it never
+judges a person against it. It never fetches anything: every input
+arrives as an argument. Scraping the posting, extracting text from a
+PDF, and assessing a candidate's fit all happen elsewhere.
 
-- **VS Code** with the Claude Code extension (you already have this).
-- **`uv`** — the tool that runs the Python. Check by opening a terminal
-  (in VS Code: **Terminal → New Terminal**) and typing `uv --version`.
-  If that errors, install it: `curl -LsSf https://astral.sh/uv/install.sh | sh`
+## Inputs
 
----
+Required: `posting` (text).
 
-## Making a new capability
+Optional (full spec in `docs/CONTRACT.md`):
 
-### 1. Make a new repo from this template
+- `role_hint` — title / company, only if the posting text buries or
+  omits them.
+- `count` — target number of requirements (default 12; clamped to
+  6..18).
+- `expert_guidance` — free-text operator steering threaded into the
+  prompt (e.g. "weight leadership signals harder for this client").
 
-**On GitHub (preferred).** Go to
-<https://github.com/onlinemoose/capability-module-template>, click
-**Use this template → Create a new repository**, name it for the
-capability (e.g. `cover-letter-writer`), and create it. The new repo
-starts with its own fresh history — no leftover link to the template.
-Then clone it to your Mac.
+## Run it
 
-*(One-time: the "Use this template" button only appears if the
-template repo's **Settings → Template repository** box is ticked.)*
-
-Rename the inner `capability/` folder to your capability's own name
-(snake_case, matching the repo — e.g. `cover_letter_writer/`), and update
-the spots that reference it: `pyproject.toml` (`name`, `packages`),
-`.importlinter`, and the `from capability import` lines in `cli.py` and
-`tests/`. The `capability-module` skill (or Claude) does this for you.
-The name has to be unique because a dashboard or orchestrator installs
-several capabilities at once and imports each by name.
-
-### 2. Open the new project in VS Code
-
-**File → Open Folder**, pick your new `cover-letter-writer` folder.
-
-### 3. Write the contract — `docs/CONTRACT.md`
-
-This is the part that's yours, and it's product work, not code. Open
-`docs/CONTRACT.md` and fill in every section:
-
-- **Responsibility** — the one job, in a sentence.
-- **Inputs (required / optional)** — what it needs to be handed.
-- **Output** — what it gives back.
-- **Out of scope** — what it deliberately does *not* do.
-
-The test: if you can't describe the inputs and output without naming
-another capability, the boundary is wrong. Sort that out before moving
-on.
-
-### 4. Have Claude Code build it
-
-Start Claude Code in VS Code and say something like:
-
-> This is a new capability module. Read `CLAUDE.md` and
-> `docs/CONTRACT.md`, then fill in the `_contract.py` and implement the
-> `_core.py` in the capability package to match the contract.
-
-Claude follows the rules in `CLAUDE.md` automatically. Review what it
-produces against your contract.
-
-### 5. Check it works on its own
-
-In the VS Code terminal:
+Needs `uv` and an Anthropic API key in `.env` (`cp .env.example .env`,
+then paste the key).
 
 ```
-uv run python cli.py --input examples/sample.txt   # try it end to end
-uv run pytest                                       # does it honour the contract?
-uv run lint-imports                                 # did anything forbidden sneak in?
+# bundled demo posting
+uv run python cli.py --input examples/sample.txt
+
+# your own file, or stdin
+uv run python cli.py --input path/to/posting.txt
+pbpaste | uv run python cli.py --count 8
 ```
 
-Replace `examples/sample.txt` with a real input to feel whether the
-output is actually good.
+The analysis prints as Markdown to stdout; the one-line cost estimate
+goes to stderr. `uv run python cli.py -h` lists every flag
+(`--role-hint`, `--count`, `--guidance`).
 
-### 6. Log it — `docs/PROGRESS.md`
+## Use it from Python
 
-Add a dated line saying what the module now does. Future-you (and Claude)
-read this first.
+`run(Input(...))` is the whole public surface.
 
----
+```python
+from job_analyst import Input, run
 
-## When is it done?
+result = run(Input(posting=open("posting.txt").read()))
 
-When step 5's three commands pass **and** a real input produces output
-you'd actually use. At that point the capability stands on its own. Wiring
-several capabilities together into a single experience is a separate,
-later job — and an easy one, because each piece has a clean contract.
+for req in result.requirements:
+    print(f"[{req.importance}] {req.point}")
+    if req.quote:
+        print(f"    ⤷ {req.quote}")
+print(result.summary)
+```
 
----
+Also public: `Output`, `Requirement`, and `Cost` — the result shapes.
 
-## Shipping changes later
-
-Once an orchestrator uses this capability, it does so by pinning a git
-tag, so every change worth picking up is a tagged release:
-
-1. Make the change; `uv run pytest` and `uv run lint-imports` pass.
-2. Bump `version` in `pyproject.toml` — **patch** for a prompt tweak or
-   fix, **minor** for a new optional input, **major** if `CONTRACT.md`
-   changed in a way that breaks existing callers.
-3. Add a `docs/PROGRESS.md` entry, commit, then `git tag vX.Y.Z` and
-   push the tag.
-
-The orchestrator picks it up when *it* chooses to move its pin — nothing
-here reaches into it. Full detail is in `CLAUDE.md` → "Releasing a new
-version".
-
----
-
-## Optional: make the skill available everywhere
-
-`.claude/skills/capability-module/` is a Claude skill that walks through
-this process and can review an existing module against the rules. It
-works inside repositories created from this template already. To use it
-in *any* project:
+## Checks
 
 ```
-cp -R .claude/skills/capability-module ~/.claude/skills/
+uv run pytest          # proves run() honours docs/CONTRACT.md (offline; no API key needed)
+uv run lint-imports    # fails if an orchestration framework sneaks in
 ```
+
+## How it works
+
+One `claude-sonnet-5` call at `effort="low"` does the analysis, returned
+through a `record_analysis` tool call. Everything around it is prompt
+assembly and coercion to the contract: every `quote` is verified against
+the posting and snapped to the closest real span (or dropped to `""` —
+never a paraphrase), `importance` is forced onto the four-value scale,
+and `requirements` are sorted `critical → high → medium → low` and
+capped at 18. The model id and prompt are internal details of
+`_core.py`; callers never see or set them.
+
+## How it composes
+
+A consumer (an orchestrator, or the dashboard) imports `job_analyst.run`
+and calls it, pinning this repo as a git tag:
+
+```
+job-analyst @ git+https://github.com/onlinemoose/job-analyst.git@vX.Y.Z
+```
+
+Nothing here reaches into the consumer. Typical use: the dashboard runs
+`run(Input(posting=posting))`, turns each `Requirement` into an
+annotation the user edits, shows `summary` and
+`reading_between_the_lines` on the job page, and records `cost` against
+the run.
+
+## Layout
+
+```
+job_analyst/       the module: run(), Input, Output, Requirement, Cost
+  _contract.py     the input/output shapes
+  _core.py         one LLM call, prompt assembly, quote verification, coercion
+cli.py             run it from a terminal
+docs/
+  CONTRACT.md      the input/output spec — written before the code
+  PROGRESS.md      dated change log, newest first
+examples/
+  sample.txt       a full demo posting, so cli.py works end to end
+tests/
+  test_run.py      contract tests (LLM call stubbed — runs offline)
+```
+
+## Releasing a change
+
+Consumers pin a git tag, so every change worth picking up is a tagged
+release:
+
+1. `uv run pytest` and `uv run lint-imports` pass.
+2. Bump `version` in `pyproject.toml`: **patch** for a prompt tweak or
+   fix, **minor** for a new optional input or better output, **major**
+   if `docs/CONTRACT.md` changed in a way that breaks callers (a
+   required input added, an output field reshaped, the `importance`
+   scale changed).
+3. Add a `docs/PROGRESS.md` entry, commit, `git tag vX.Y.Z`, push the
+   tag.
+
+Full detail in `CLAUDE.md` under "Releasing a new version".

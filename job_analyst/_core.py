@@ -150,7 +150,7 @@ def run(data: Input) -> Output:
     """
     _validate(data)
     payload, cost = _generate(SYSTEM_PROMPT, _render_prompt(data))
-    return _assemble(payload, cost, data.posting)
+    return _assemble(_normalise_payload(payload), cost, data.posting)
 
 
 def _validate(data: Input) -> None:
@@ -247,6 +247,51 @@ def _extract_payload(message: anthropic.types.Message) -> dict:
         f"model did not return a {_ANALYSIS_TOOL['name']} tool call "
         f"(stop_reason={message.stop_reason!r})"
     )
+
+
+def _normalise_payload(payload: dict) -> dict:
+    """Undo a common malformed tool call before `_assemble` sees it.
+
+    Some models don't emit the analysis as structured tool input — they
+    serialise the whole object to a JSON string and put it in a single
+    property, e.g. ``{"requirements": "{\\"summary\\": ..., \\"requirements\\":
+    [...]}"}``. Left alone, `_assemble` iterates that string character by
+    character and returns an empty analysis.
+
+    Recover it:
+    - a value anywhere in `payload` that is a JSON string decoding to a
+      dict that looks like the real payload (has a list `requirements` or a
+      `summary`) → use that dict;
+    - `payload["requirements"]` that is a JSON string decoding to a list →
+      swap in the list.
+
+    A well-formed payload (list `requirements`) is returned untouched.
+    """
+    if isinstance(payload.get("requirements"), list):
+        return payload
+
+    for value in payload.values():
+        if not isinstance(value, str):
+            continue
+        try:
+            inner = json.loads(value)
+        except (json.JSONDecodeError, ValueError):
+            continue
+        if isinstance(inner, dict) and (
+            isinstance(inner.get("requirements"), list) or "summary" in inner
+        ):
+            return inner
+
+    reqs = payload.get("requirements")
+    if isinstance(reqs, str):
+        try:
+            decoded = json.loads(reqs)
+        except (json.JSONDecodeError, ValueError):
+            decoded = None
+        if isinstance(decoded, list):
+            return {**payload, "requirements": decoded}
+
+    return payload
 
 
 def _price(usage: anthropic.types.Usage) -> Cost:

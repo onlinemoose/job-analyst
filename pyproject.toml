@@ -1,6 +1,6 @@
 [project]
 name = "job-analyst"
-version = "0.1.0"
+version = "0.1.1"
 description = "Analyse a job posting into a structured summary."
 requires-python = ">=3.12"
 dependencies = [

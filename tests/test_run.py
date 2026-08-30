@@ -4,6 +4,7 @@ The LLM call is stubbed (`_core._generate`) so these run offline with no
 ANTHROPIC_API_KEY. One test per promise the module makes.
 """
 
+import json
 from types import SimpleNamespace
 
 import pytest
@@ -294,3 +295,37 @@ def test_extract_payload_raises_when_there_is_nothing_structured():
     message = SimpleNamespace(content=[text_block], stop_reason="end_turn")
     with pytest.raises(RuntimeError):
         _core._extract_payload(message)
+
+
+# --- payload normalisation (malformed tool calls) ------------------------
+
+
+def test_normalise_passes_a_well_formed_payload_through():
+    payload = _payload()
+    assert _core._normalise_payload(payload) is payload
+
+
+def test_normalise_unwraps_a_whole_payload_stringified_into_requirements():
+    # Observed in the wild: the model serialises the entire analysis to a
+    # JSON string and puts it in the `requirements` property.
+    real = _payload()
+    wrapped = {"requirements": json.dumps(real)}
+    assert _core._normalise_payload(wrapped) == real
+
+
+def test_normalise_unwraps_a_json_encoded_requirements_list():
+    real = _payload()
+    wrapped = {"requirements": json.dumps(real["requirements"]), "summary": real["summary"]}
+    out = _core._normalise_payload(wrapped)
+    assert out["requirements"] == real["requirements"]
+    assert out["summary"] == real["summary"]
+
+
+def test_run_recovers_from_a_stringified_payload(monkeypatch):
+    wrapped = {"requirements": json.dumps(_payload())}
+    monkeypatch.setattr(_core, "_generate", lambda s, p: (wrapped, STUB_COST))
+    result = run(Input(posting=POSTING))
+    assert result.summary
+    assert result.requirements
+    assert result.requirements[0].importance == "critical"
+    assert 3 <= len(result.reading_between_the_lines) <= 6

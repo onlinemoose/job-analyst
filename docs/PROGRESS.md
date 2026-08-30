@@ -4,6 +4,27 @@ Dated entries, newest first. What's done, what's deferred, decisions
 made. Read this before assuming anything about the module's current
 state.
 
+## 2026-08-30 — v0.1.1: recover from a stringified tool call
+
+First real runs (via the dashboard's `/jobs/{id}/analyse`) came back empty:
+`requirements=[]`, `summary=""`, cost non-zero. Cause: `claude-sonnet-5` at
+`effort="low"` sometimes does not emit the analysis as structured tool
+input — it serialises the whole object to a JSON string and puts it in the
+`requirements` property (`{"requirements": "{\"summary\": ..., ...}"}`).
+`_assemble` then iterated that string character by character and dropped
+everything.
+
+- `_normalise_payload()` added, run between `_generate` and `_assemble`:
+  unwraps a JSON string that decodes to the real payload dict, or a
+  JSON-encoded `requirements` list. A well-formed payload passes through
+  untouched (identity).
+- Tests: `_normalise_payload` unit cases + an end-to-end `run()` recovery
+  test with a stubbed stringified payload.
+- Not a contract change — Input/Output shapes are identical. Patch bump.
+- Still open: `reading_between_the_lines` occasionally comes back empty at
+  `effort="low"`. Tolerated by `_assemble`; raise `EFFORT` to `"medium"`
+  in `_core.py` if it needs to be reliable.
+
 ## 2026-08-30 — Module created from capability-module-template, first implementation
 
 - Renamed the `capability/` package to `job_analyst/`; updated

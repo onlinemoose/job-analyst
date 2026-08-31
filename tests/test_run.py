@@ -321,8 +321,26 @@ def test_normalise_unwraps_a_json_encoded_requirements_list():
     assert out["summary"] == real["summary"]
 
 
+def test_normalise_unwraps_a_dict_nested_under_a_wrapper_key():
+    # Observed in the wild (claude-sonnet-5, effort=low): the model nests
+    # the whole analysis one level down as a plain dict, e.g.
+    # {"analysis": {"summary": ..., "requirements": [...]}}.
+    real = _payload()
+    assert _core._normalise_payload({"analysis": real}) == real
+
+
 def test_run_recovers_from_a_stringified_payload(monkeypatch):
     wrapped = {"requirements": json.dumps(_payload())}
+    monkeypatch.setattr(_core, "_generate", lambda s, p: (wrapped, STUB_COST))
+    result = run(Input(posting=POSTING))
+    assert result.summary
+    assert result.requirements
+    assert result.requirements[0].importance == "critical"
+    assert 3 <= len(result.reading_between_the_lines) <= 6
+
+
+def test_run_recovers_from_a_dict_nested_under_a_wrapper_key(monkeypatch):
+    wrapped = {"analysis": _payload()}
     monkeypatch.setattr(_core, "_generate", lambda s, p: (wrapped, STUB_COST))
     result = run(Input(posting=POSTING))
     assert result.summary

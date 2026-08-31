@@ -252,16 +252,19 @@ def _extract_payload(message: anthropic.types.Message) -> dict:
 def _normalise_payload(payload: dict) -> dict:
     """Undo a common malformed tool call before `_assemble` sees it.
 
-    Some models don't emit the analysis as structured tool input — they
-    serialise the whole object to a JSON string and put it in a single
-    property, e.g. ``{"requirements": "{\\"summary\\": ..., \\"requirements\\":
-    [...]}"}``. Left alone, `_assemble` iterates that string character by
-    character and returns an empty analysis.
+    Some models don't emit the analysis as flat structured tool input.
+    Two shapes seen in the wild, both of which leave `_assemble` with no
+    `requirements` list and yield an empty analysis:
+
+    - the whole object serialised to a JSON string in a single property,
+      e.g. ``{"requirements": "{\\"summary\\": ..., \\"requirements\\": [...]}"}``;
+    - the whole object nested one level down as a plain dict under a
+      wrapper key, e.g. ``{"analysis": {"summary": ..., "requirements": [...]}}``.
 
     Recover it:
-    - a value anywhere in `payload` that is a JSON string decoding to a
-      dict that looks like the real payload (has a list `requirements` or a
-      `summary`) → use that dict;
+    - a value anywhere in `payload` that is the real payload — a dict, or a
+      JSON string decoding to one, that looks the part (has a list
+      `requirements` or a `summary`) → use that dict;
     - `payload["requirements"]` that is a JSON string decoding to a list →
       swap in the list.
 
@@ -271,12 +274,12 @@ def _normalise_payload(payload: dict) -> dict:
         return payload
 
     for value in payload.values():
-        if not isinstance(value, str):
-            continue
-        try:
-            inner = json.loads(value)
-        except (json.JSONDecodeError, ValueError):
-            continue
+        inner = value
+        if isinstance(inner, str):
+            try:
+                inner = json.loads(inner)
+            except (json.JSONDecodeError, ValueError):
+                continue
         if isinstance(inner, dict) and (
             isinstance(inner.get("requirements"), list) or "summary" in inner
         ):

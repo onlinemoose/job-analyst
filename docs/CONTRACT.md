@@ -12,8 +12,9 @@ hiring manager / advertising company's perspective** — not the
 candidate's. It returns a prioritised list of what that employer is
 really weighing when they read applications, each point anchored to a
 verbatim span of the posting, plus a one–two sentence summary of what
-the employer is actually buying and a short list of signals the posting
-implies but never states outright.
+the employer is actually buying, the hiring company and role title as
+written in the posting, and a short list of signals the posting implies
+but never states outright.
 
 No candidate data is an input. The capability never judges a person
 against the role — it characterises the role. Fit assessment and gap
@@ -97,6 +98,8 @@ class Requirement:
 class Output:
     requirements: list[Requirement]        # ordered, most important first; len tracks Input.count, within 6..18
     summary: str                           # 1–2 sentences: what this employer is really buying
+    company: str                           # hiring company's name, copied from the posting; "" if unstated
+    job_title: str                         # role title, copied from the posting; "" if unstated
     reading_between_the_lines: list[str]   # 3–6 short strings: signals the posting implies but
                                            #   never states — the real seniority bar, what they've
                                            #   likely been burned by, culture / pace cues
@@ -108,6 +111,9 @@ class Output:
   band. Capped at 18.
 - `summary` — non-empty for any non-trivial posting; a plain-language
   read of the employer's actual intent.
+- `company` / `job_title` — the hiring company and the role title, each
+  copied from the posting as written. `""` when the posting never states
+  it plainly (never guessed, never inferred). Whitespace-trimmed.
 - `reading_between_the_lines` — up to 6 entries (the model is asked for
   3–6). Inferences, explicitly *not* restatements of posting text.
 - `cost` — see below.
@@ -247,6 +253,8 @@ Output(
         "A platform team buying senior migration leadership for a "
         "payments-critical backend, under real delivery pressure."
     ),
+    company="",  # this excerpt never names the employer
+    job_title="Senior Backend Engineer",
     reading_between_the_lines=[
         "The real seniority bar is staff-adjacent: someone who has run a migration, not just contributed to one.",
         "On-call for payments plus 'we move fast' suggests recent reliability or delivery pain they are hiring to fix.",
@@ -280,6 +288,7 @@ Output(
     (whitespace-insensitive) and is a single line;
   - `requirements` is sorted by importance and capped at 18;
   - `summary` non-empty;
+  - `company` and `job_title` are strings (`""` when the posting omits them);
   - `len(reading_between_the_lines) <= 6`.
 - **`ValueError`** on empty / whitespace `posting`.
 - **Offline** — the LLM call (`_core._generate`) is monkeypatched, so
@@ -308,6 +317,7 @@ reaches into a consumer; it moves its own pin.
 - The analysis step calls `run(Input(posting=posting))` and maps the
   result into its own shapes: `Requirement.point` + `Requirement.quote`
   → an emphasis/annotation pair; `reading_between_the_lines` renders
-  under `summary` on the job detail view; `Cost` feeds the run's
-  metadata.
+  under `summary` on the job detail view; `company` / `job_title` are
+  stored on the job post and pre-fill the writer forms; `Cost` feeds the
+  run's metadata.
 - The `importance` scale is `critical` / `high` / `medium` / `low`.

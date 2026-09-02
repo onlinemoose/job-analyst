@@ -23,6 +23,8 @@ hiring manager who wrote it would, and returns:
   one-line `rationale`.
 - `summary`: one or two sentences on what this employer is really
   buying.
+- `company` / `job_title`: the hiring company and the role title, copied
+  from the posting as written — `""` when the posting never states them.
 - `reading_between_the_lines`: 3–6 short strings — the real seniority
   bar the wording implies, the failure the role is likely a reaction to,
   pace and culture cues. Inferences, not restatements.

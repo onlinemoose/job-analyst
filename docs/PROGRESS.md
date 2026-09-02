@@ -4,6 +4,26 @@ Dated entries, newest first. What's done, what's deferred, decisions
 made. Read this before assuming anything about the module's current
 state.
 
+## 2026-09-02 — v0.2.0: extract the company and job title
+
+`Output` gains two string fields, `company` and `job_title` — the hiring
+company and the role title, copied from the posting as written, `""` when
+the posting never states them. The dashboard stores them on the job post
+and pre-fills the Cover Letter / CV writer forms, so those values aren't
+retyped every run.
+
+- `_contract.py`: `company: str` / `job_title: str` on `Output`, after
+  `summary`.
+- `_core.py`: two `record_analysis` tool properties (both added to the
+  `required` list — always present, `""` when the posting omits them),
+  two `SYSTEM_PROMPT` rules, and `_assemble()` threads them through
+  (`str(payload.get(...)).strip()`).
+- `tests/test_run.py`: `_payload()` carries both keys; new
+  `test_output_carries_company_and_job_title` and
+  `test_missing_company_and_title_become_empty_strings`.
+- **Minor** bump: better output, existing callers unaffected — a consumer
+  that ignores the new fields still works.
+
 ## 2026-08-30 — v0.1.1: recover from a stringified tool call
 
 First real runs (via the dashboard's `/jobs/{id}/analyse`) came back empty:

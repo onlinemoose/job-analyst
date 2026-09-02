@@ -55,6 +55,9 @@ def _payload(**overrides) -> dict:
             "A platform team buying senior migration leadership for a "
             "payments-critical backend, under real delivery pressure."
         ),
+        # POSTING names the role but no company.
+        "company": "",
+        "job_title": "Senior Backend Engineer",
         "reading_between_the_lines": [
             "The real seniority bar is staff-adjacent: someone who has run a migration, not just helped.",
             "Payments on-call plus 'we move fast' hints at recent reliability or delivery pain.",
@@ -93,6 +96,8 @@ def test_run_returns_the_output_type(stub_llm):
     assert isinstance(result, Output)
     assert all(isinstance(r, Requirement) for r in result.requirements)
     assert isinstance(result.summary, str)
+    assert isinstance(result.company, str)
+    assert isinstance(result.job_title, str)
     assert isinstance(result.reading_between_the_lines, list)
     assert isinstance(result.cost, Cost)
 
@@ -175,6 +180,24 @@ def test_loose_quote_is_snapped_to_the_real_span(stub_llm, monkeypatch):
     result = run(Input(posting=POSTING))
     assert result.requirements[0].quote == "own the migration of our monolith"
     assert _core._matches_posting(result.requirements[0].quote, POSTING)
+
+
+def test_output_carries_company_and_job_title(stub_llm, monkeypatch):
+    payload = _payload(company="Northwind Robotics", job_title="Staff Backend Engineer")
+    monkeypatch.setattr(_core, "_generate", lambda s, p: (payload, STUB_COST))
+    result = run(Input(posting=POSTING))
+    assert result.company == "Northwind Robotics"
+    assert result.job_title == "Staff Backend Engineer"
+
+
+def test_missing_company_and_title_become_empty_strings(stub_llm, monkeypatch):
+    payload = _payload()
+    del payload["company"]
+    del payload["job_title"]
+    monkeypatch.setattr(_core, "_generate", lambda s, p: (payload, STUB_COST))
+    result = run(Input(posting=POSTING))
+    assert result.company == ""
+    assert result.job_title == ""
 
 
 def test_summary_and_reading_between_the_lines(stub_llm):

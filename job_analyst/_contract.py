@@ -103,6 +103,14 @@ class Output:
     summary: str
     """One–two sentences: what this employer is really buying."""
 
+    company: str
+    """The hiring company's name, copied from the posting. "" when the
+    posting never names it."""
+
+    job_title: str
+    """The role / job title, copied from the posting. "" when the posting
+    never states it plainly."""
+
     reading_between_the_lines: list[str]
     """3–6 short strings: signals the posting implies but never states —
     the real seniority bar, the failure the role is likely a reaction

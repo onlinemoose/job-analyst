@@ -75,6 +75,10 @@ Rules for the fields you record:
   - `rationale` is one line on why the hiring manager weights this.
 - `summary`: one or two sentences on what this employer is really \
   buying — the intent behind the advert, in plain language.
+- `company`: the hiring company's name, copied from the posting. Use an \
+  empty string if the posting never names it.
+- `job_title`: the role title, copied from the posting. Use an empty \
+  string if the posting never states it plainly.
 - `reading_between_the_lines`: 3 to 6 short strings. Inferences the \
   posting invites but does not state outright — the real seniority bar \
   the wording implies, the failure the role is likely a reaction to, \
@@ -127,6 +131,20 @@ _ANALYSIS_TOOL: anthropic.types.ToolParam = {
                 "type": "string",
                 "description": "1-2 sentences: what this employer is really buying.",
             },
+            "company": {
+                "type": "string",
+                "description": (
+                    "The hiring company's name, exactly as written in the "
+                    "posting. '' if the posting does not name it."
+                ),
+            },
+            "job_title": {
+                "type": "string",
+                "description": (
+                    "The role / job title, exactly as written in the posting. "
+                    "'' if the posting does not state it."
+                ),
+            },
             "reading_between_the_lines": {
                 "type": "array",
                 "description": (
@@ -136,7 +154,10 @@ _ANALYSIS_TOOL: anthropic.types.ToolParam = {
                 "items": {"type": "string"},
             },
         },
-        "required": ["requirements", "summary", "reading_between_the_lines"],
+        "required": [
+            "requirements", "summary", "company", "job_title",
+            "reading_between_the_lines",
+        ],
     },
 }
 
@@ -355,6 +376,8 @@ def _assemble(payload: dict, cost: Cost, posting: str) -> Output:
     return Output(
         requirements=requirements,
         summary=str(payload.get("summary", "")).strip(),
+        company=str(payload.get("company", "")).strip(),
+        job_title=str(payload.get("job_title", "")).strip(),
         reading_between_the_lines=reading,
         cost=cost,
     )
